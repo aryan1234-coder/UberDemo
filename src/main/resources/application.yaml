@@ -1,0 +1,35 @@
+server:
+  port: 8081
+spring:
+  application:
+    name: rideApp
+
+  datasource:
+    url: jdbc:postgresql://localhost:5433/rideApp
+    username: postgres
+    password: postgres
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+  kafka:
+    bootstrap-servers: localhost:9092
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+
+#  data:
+#    redis:
+#      host: localhost
+#      port: 6379
+
+app:
+  redis:
+    driver-geo-key: driver:locations
+  kafka:
+    topic: driver-assigned
+
+
+
+
