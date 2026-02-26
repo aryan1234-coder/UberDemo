@@ -39,6 +39,23 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(body, HttpStatus.CONFLICT);
     }
 
+    @ExceptionHandler(NullPointerException.class)
+    public ResponseEntity<Object> handleNullPointer(NullPointerException ex) {
+        log.error("Null pointer exception: ", ex);
+        Map<String, Object> body = new HashMap<>();
+        body.put("error", "Bad request");
+        body.put("message", "Required field is missing or null");
+        return new ResponseEntity<>(body, HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(com.example.rideapp.exception.ResourceNotFoundException.class)
+    public ResponseEntity<Object> handleNotFound(com.example.rideapp.exception.ResourceNotFoundException ex) {
+        Map<String, Object> body = new HashMap<>();
+        body.put("error", "Not Found");
+        body.put("message", ex.getMessage());
+        return new ResponseEntity<>(body, HttpStatus.NOT_FOUND);
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Object> handleAll(Exception ex) {
         log.error("Unhandled exception: ", ex);

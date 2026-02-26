@@ -1,33 +1,90 @@
-HELP.md
-target/
-.mvn/wrapper/maven-wrapper.jar
-!**/src/main/**/target/
-!**/src/test/**/target/
-
-### STS ###
-.apt_generated
-.classpath
-.factorypath
-.project
-.settings
-.springBeans
-.sts4-cache
-
-### IntelliJ IDEA ###
-.idea
-*.iws
+# IntelliJ
+/.idea/
 *.iml
+*.iws
 *.ipr
 
-### NetBeans ###
-/nbproject/private/
-/nbbuild/
-/dist/
-/nbdist/
-/.nb-gradle/
-build/
-!**/src/main/**/build/
-!**/src/test/**/build/
+# Eclipse / STS
+/.classpath
+/.project
+/.settings/
+.apt_generated/
+.factorypath
+.springBeans
+.sts4-cache/
 
-### VS Code ###
+# VS Code
 .vscode/
+
+# Maven
+/target/
+!.mvn/wrapper/maven-wrapper.jar
+/mvnw
+/mvnw.cmd
+
+# Gradle (if present)
+.gradle/
+build/
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+*.tmp
+*.temp
+*.swp
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Environment / secrets
+.env
+.env.*
+secrets.properties
+credentials.properties
+*.jks
+*.keystore
+*.p12
+
+# Docker
+docker-compose.override.yml
+.docker/
+*.envrc
+
+# IDE run configurations
+*.run.xml
+
+# Generated sources / build artifacts
+generated-sources/
+generated-test-sources/
+
+# Coverage
+jacoco.exec
+coverage-reports/
+
+# Spring Boot specific
+spring.log
+spring-boot-app.jar
+
+# Node (if used)
+node_modules/
+
+# Misc
+*.bak
+*.orig
+
+# Keep local application.yaml in source controlled; ignore any generated in target
+/target/classes/application.yaml
+
+# Ignore compiled classes (if accidentally added)
+*.class
+
+# Ignore Postman workspace export if you keep credentials
+*.postman_collection.json
+
+# Notes: Add any environment-specific files you don't want to commit.
+# If you have other local config files (IDE-specific or OS-specific), add them here.

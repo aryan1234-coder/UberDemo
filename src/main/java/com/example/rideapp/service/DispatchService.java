@@ -1,7 +1,6 @@
 package com.example.rideapp.service;
 
-import com.example.rideapp.dto.RideRequestDTO;
-import com.example.rideapp.dto.DispatchResponseDTO;
+import com.example.rideapp.dto.*;
 import com.example.rideapp.entity.Assignment;
 import com.example.rideapp.entity.Driver;
 import com.example.rideapp.entity.RideRequest;
@@ -14,10 +13,12 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 
+import java.time.Instant;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 @Service
@@ -66,7 +67,7 @@ public class DispatchService {
         }
 
         // Find nearest available drivers
-        List<NearbyDriver> candidates = (List<NearbyDriver>) geoService.findNearbyDrivers(
+        List<NearbyDriver> candidates = geoService.findNearbyDrivers(
                 dto.getPickupLat(), dto.getPickupLong(), 5.0);
 
         if (candidates == null || candidates.isEmpty()) {
@@ -155,5 +156,137 @@ public class DispatchService {
     private double haversine(double lat1, double lon1, double lat2, double lon2) {
         // implementation omitted for brevity (standard formula)
         return 2.5; // placeholder
+    }
+
+    // --------------------------------------------------
+    // New driver / rider actions required by controller
+    // --------------------------------------------------
+
+    public RideActionResponseDto acceptRide(UUID rideId, UUID driverId) {
+        // Null check
+        if (rideId == null) {
+            throw new IllegalArgumentException("rideId cannot be null");
+        }
+        if (driverId == null) {
+            throw new IllegalArgumentException("driverId cannot be null");
+        }
+
+        RideActionResponseDto response = RideActionResponseDto.builder()
+                .rideId(rideId)
+                .status("ACCEPTED")
+                .message("Driver accepted the ride")
+                .timestamp(Instant.now())
+                .build();
+
+        // In real app: verify assignment exists, driver matches, notify rider, etc.
+        log.info("Ride accepted: rideId={} driverId={}", rideId, driverId);
+        return response;
+    }
+
+    public RideActionResponseDto declineRide(UUID rideId, UUID driverId, String reason) {
+        // Null check
+        if (rideId == null) {
+            throw new IllegalArgumentException("rideId cannot be null");
+        }
+        if (driverId == null) {
+            throw new IllegalArgumentException("driverId cannot be null");
+        }
+
+        RideActionResponseDto response = RideActionResponseDto.builder()
+                .rideId(rideId)
+                .status("DECLINED")
+                .message("Driver declined: " + (reason == null ? "no reason" : reason))
+                .timestamp(Instant.now())
+                .build();
+
+        log.info("Ride declined: rideId={} driverId={} reason={}", rideId, driverId, reason);
+        // In real app: requeue or rematch
+        return response;
+    }
+
+    public RideActionResponseDto updateTripState(UUID rideId, TripStatusDto dto) {
+        // Null check
+        if (rideId == null) {
+            throw new IllegalArgumentException("rideId cannot be null");
+        }
+        if (dto == null) {
+            throw new IllegalArgumentException("TripStatusDto cannot be null");
+        }
+        if (dto.getNewState() == null || dto.getNewState().trim().isEmpty()) {
+            throw new IllegalArgumentException("newState cannot be null or empty");
+        }
+
+        RideActionResponseDto response = RideActionResponseDto.builder()
+                .rideId(rideId)
+                .status(dto.getNewState())
+                .message(dto.getNotes())
+                .timestamp(dto.getTimestamp() != null ? dto.getTimestamp() : Instant.now())
+                .build();
+
+        log.info("Trip state updated: rideId={} newState={}", rideId, dto.getNewState());
+        return response;
+    }
+
+    public RideActionResponseDto cancelRide(UUID rideId, UUID riderId, String reason) {
+        // Null check
+        if (rideId == null) {
+            throw new IllegalArgumentException("rideId cannot be null");
+        }
+        if (riderId == null) {
+            throw new IllegalArgumentException("riderId cannot be null");
+        }
+
+        RideActionResponseDto response = RideActionResponseDto.builder()
+                .rideId(rideId)
+                .status("CANCELLED")
+                .message("Cancelled by rider: " + (reason == null ? "no reason" : reason))
+                .timestamp(Instant.now())
+                .build();
+
+        log.info("Ride cancelled: rideId={} riderId={} reason={}", rideId, riderId, reason);
+        return response;
+    }
+
+    public RideStatusDto getRideStatus(UUID rideId) {
+        RideStatusDto status = new RideStatusDto();
+        status.setRideId(rideId);
+
+        // Try load from DB
+        try {
+            Optional<RideRequest> r = rideRequestRepo.findById(rideId);
+            if (r.isEmpty()) {
+                // No such ride — return 404 to client
+                throw new com.example.rideapp.exception.ResourceNotFoundException("Ride not found: " + rideId);
+            }
+
+            RideRequest ride = r.get();
+            status.setCurrentState(ride.getStatus());
+
+            // If assigned, try to populate driver and ETA
+            if ("ASSIGNED".equalsIgnoreCase(ride.getStatus())) {
+                try {
+                    Optional<Assignment> asgOpt = assignmentRepo.findByRideRequestId(rideId);
+                    if (asgOpt.isPresent()) {
+                        Assignment asg = asgOpt.get();
+                        if (asg.getDriver() != null) {
+                            status.setDriverId(asg.getDriver().getId());
+                        }
+                        if (asg.getEstimatedMinutes() != null) {
+                            status.setEtaSeconds(asg.getEstimatedMinutes() * 60);
+                        }
+                    }
+                } catch (Exception e) {
+                    log.warn("Failed to fetch assignment for ride {}: {}", rideId, e.getMessage());
+                }
+            }
+
+        } catch (com.example.rideapp.exception.ResourceNotFoundException e) {
+            throw e; // bubble up to be handled by ControllerAdvice
+        } catch (Exception e) {
+            log.warn("Failed to fetch ride status from DB: {}", e.getMessage());
+            status.setCurrentState("ERROR");
+        }
+
+        return status;
     }
 }
